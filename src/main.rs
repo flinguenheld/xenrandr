@@ -34,7 +34,7 @@ fn main() -> io::Result<()> {
         let mut frame = Frame::new_frame();
 
         match mode {
-            Mode::Welcome => mode_welcome.mode_loop(&mut frame, &mut mode)?,
+            Mode::Welcome => (frame, mode) = mode_welcome.mode_loop(frame)?,
             _ => break,
         }
 

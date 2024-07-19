@@ -2,57 +2,61 @@ use crossterm::event::{self, Event, KeyCode};
 use std::{io, time::Duration};
 
 use super::Mode;
-use crate::render::frame::Frame;
-use crate::render::frame::{NB_COLS, NB_ROWS};
+use crate::render::frame::{Frame, Point, NB_COLS, NB_ROWS};
+use crate::widget::WScreen;
+use crate::xrandr::XScreens;
 
+#[derive(Debug, Default)]
 pub struct ModeWelcome {
-    row: usize,
-    col: usize,
+    point_prout: Point,
+    xscreens: XScreens,
 }
 
 impl ModeWelcome {
     pub fn new() -> ModeWelcome {
         Self {
-            row: NB_ROWS / 2,
-            col: NB_COLS / 2,
+            point_prout: Point::new(NB_ROWS / 2, NB_COLS / 2),
+            ..Default::default()
         }
     }
 
-    pub fn mode_loop(&mut self, frame: &mut Frame, mode: &mut Mode) -> io::Result<()> {
+    pub fn mode_loop(&mut self, mut frame: Frame) -> io::Result<(Frame, Mode)> {
         let txt = "prout";
+
+        self.xscreens.refresh();
 
         while event::poll(Duration::default())? {
             if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
                     KeyCode::Esc => {
-                        *mode = Mode::Quit;
+                        return Ok((frame, Mode::Quit));
                     }
                     KeyCode::Up => {
-                        if self.row > 0 {
-                            self.row -= 1;
+                        if self.point_prout.row > 0 {
+                            self.point_prout.row -= 1;
                         } else {
-                            self.row = NB_ROWS - 1;
+                            self.point_prout.row = NB_ROWS - 1;
                         }
                     }
                     KeyCode::Down => {
-                        if self.row < NB_ROWS - 1 {
-                            self.row += 1;
+                        if self.point_prout.row < NB_ROWS - 1 {
+                            self.point_prout.row += 1;
                         } else {
-                            self.row = 0;
+                            self.point_prout.row = 0;
                         }
                     }
                     KeyCode::Left => {
-                        if self.col > 0 {
-                            self.col -= 1;
+                        if self.point_prout.col > 0 {
+                            self.point_prout.col -= 1;
                         } else {
-                            self.col = NB_COLS - txt.len();
+                            self.point_prout.col = NB_COLS - txt.len();
                         }
                     }
                     KeyCode::Right => {
-                        if self.col < NB_COLS - txt.len() {
-                            self.col += 1;
+                        if self.point_prout.col < NB_COLS - txt.len() {
+                            self.point_prout.col += 1;
                         } else {
-                            self.col = 0;
+                            self.point_prout.col = 0;
                         }
                     }
                     _ => {}
@@ -60,10 +64,14 @@ impl ModeWelcome {
             }
         }
 
-        for (i, c) in txt.chars().enumerate() {
-            // frame.cases[self.row][self.col + i].back_color = style::Color::Red;
-            frame.cases[self.row][self.col + i].value = c;
+        let mut i = 2;
+        for screen in self.xscreens.list.iter() {
+            frame = WScreen::new(Point::new(5, i)).draw(frame, screen);
+            i += 20;
         }
-        Ok(())
+
+        frame = frame.print_text(txt, self.point_prout);
+
+        Ok((frame, Mode::Welcome))
     }
 }
