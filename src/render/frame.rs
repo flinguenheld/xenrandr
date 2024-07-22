@@ -27,6 +27,12 @@ impl Point {
             col: self.col + col,
         }
     }
+    pub fn down(self, row: usize, col: usize) -> Point {
+        Point {
+            row: if row >= self.row { self.row - row } else { row },
+            col: if col >= self.col { self.col - col } else { col },
+        }
+    }
 }
 // ----------------------
 /// Frame --
@@ -41,6 +47,9 @@ pub struct FrameCase {
 pub struct Frame {
     pub cases: [[FrameCase; NB_COLS]; NB_ROWS],
     base: [[FrameCase; NB_COLS]; NB_ROWS],
+
+    pub current_fore_color: style::Color,
+    pub current_back_color: style::Color,
 }
 
 impl Frame {
@@ -57,6 +66,9 @@ impl Frame {
                 fore_color: style::Color::White,
                 back_color: style::Color::Blue,
             }; NB_COLS]; NB_ROWS],
+
+            current_fore_color: style::Color::White,
+            current_back_color: style::Color::Black,
         }
     }
 
@@ -77,11 +89,19 @@ impl Frame {
         stdout.flush().unwrap();
     }
 
+    pub fn set_current_colors(mut self, fore: style::Color, back: style::Color) -> Self {
+        self.current_fore_color = fore;
+        self.current_back_color = back;
+        self
+    }
+
     pub fn print_text(mut self, text: &str, point: Point) -> Self {
         if let Some(row) = self.cases.get_mut(point.row) {
             for (i, c) in text.chars().enumerate() {
                 if let Some(case) = row.get_mut(point.col + i) {
                     case.value = c;
+                    case.fore_color = self.current_fore_color;
+                    case.back_color = self.current_back_color;
                 }
             }
         }

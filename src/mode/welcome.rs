@@ -1,62 +1,77 @@
-use crossterm::event::{self, Event, KeyCode};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use std::{io, time::Duration};
 
 use super::Mode;
+use crate::bash::xrandr_read;
 use crate::render::frame::{Frame, Point, NB_COLS, NB_ROWS};
-use crate::widget::WScreen;
-use crate::xrandr::XScreens;
+use crate::widget::{focus_next, focus_previous, WScreen};
 
 #[derive(Debug, Default)]
 pub struct ModeWelcome {
-    point_prout: Point,
-    xscreens: XScreens,
+    wscreens: Vec<WScreen>,
 }
 
 impl ModeWelcome {
     pub fn new() -> ModeWelcome {
-        Self {
-            point_prout: Point::new(NB_ROWS / 2, NB_COLS / 2),
+        ModeWelcome {
+            wscreens: xrandr_read(),
             ..Default::default()
         }
     }
 
+    #[rustfmt::skip]
     pub fn mode_loop(&mut self, mut frame: Frame) -> io::Result<(Frame, Mode)> {
-        let txt = "prout";
-
-        self.xscreens.refresh();
-
         while event::poll(Duration::default())? {
             if let Event::Key(key_event) = event::read()? {
-                match key_event.code {
-                    KeyCode::Esc => {
+
+                match key_event {
+                    KeyEvent { code: KeyCode::Esc, .. } |
+                    KeyEvent { code: KeyCode::Char('c'), modifiers: KeyModifiers::CONTROL, .. }
+                     => {
                         return Ok((frame, Mode::Quit));
                     }
-                    KeyCode::Up => {
-                        if self.point_prout.row > 0 {
-                            self.point_prout.row -= 1;
-                        } else {
-                            self.point_prout.row = NB_ROWS - 1;
+
+                    KeyEvent { code: KeyCode::Tab, .. } |
+                    KeyEvent { code: KeyCode::Char('n'), modifiers: KeyModifiers::CONTROL, .. } => {
+                        focus_next(&mut self.wscreens);
+                    }
+
+                    KeyEvent { code: KeyCode::BackTab, .. } |
+                    KeyEvent { code: KeyCode::Char('p'), modifiers: KeyModifiers::CONTROL, .. } => {
+                        focus_previous(&mut self.wscreens)
+                    }
+
+                    KeyEvent { code: KeyCode::F(5), .. } => {
+                        self.wscreens = xrandr_read();
+                    }
+
+                    KeyEvent { code: KeyCode::Up, .. } => {
+                        if let Some(current_wscreer) =
+                            self.wscreens.iter_mut().find(|ws| ws.focused)
+                        {
+                            focus_next(&mut current_wscreer.combos);
                         }
                     }
-                    KeyCode::Down => {
-                        if self.point_prout.row < NB_ROWS - 1 {
-                            self.point_prout.row += 1;
-                        } else {
-                            self.point_prout.row = 0;
+
+                    KeyEvent { code: KeyCode::Down, .. } => {
+                        if let Some(current_wscreer) =
+                            self.wscreens.iter_mut().find(|ws| ws.focused)
+                        {
+                            focus_previous(&mut current_wscreer.combos);
                         }
                     }
-                    KeyCode::Left => {
-                        if self.point_prout.col > 0 {
-                            self.point_prout.col -= 1;
-                        } else {
-                            self.point_prout.col = NB_COLS - txt.len();
+
+                    KeyEvent { code: KeyCode::Right, .. } => {
+                        if let Some(current_wscreer) = self.wscreens.iter_mut().find(|ws| ws.focused)
+                        {
+                            current_wscreer.next();
                         }
                     }
-                    KeyCode::Right => {
-                        if self.point_prout.col < NB_COLS - txt.len() {
-                            self.point_prout.col += 1;
-                        } else {
-                            self.point_prout.col = 0;
+
+                    KeyEvent { code: KeyCode::Left, .. } => {
+                        if let Some(current_wscreer) = self.wscreens.iter_mut().find(|ws| ws.focused)
+                        {
+                            current_wscreer.previous();
                         }
                     }
                     _ => {}
@@ -64,13 +79,9 @@ impl ModeWelcome {
             }
         }
 
-        let mut i = 2;
-        for screen in self.xscreens.list.iter() {
-            frame = WScreen::new(Point::new(5, i)).draw(frame, screen);
-            i += 20;
+        for ws in self.wscreens.iter() {
+            frame = ws.draw(frame);
         }
-
-        frame = frame.print_text(txt, self.point_prout);
 
         Ok((frame, Mode::Welcome))
     }
