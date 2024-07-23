@@ -1,11 +1,8 @@
+use crate::widget::WScreen;
 use std::process::Command;
 
-use crate::{render::frame::Point, widget::WScreen};
-
-pub fn xrandr_read() -> Vec<WScreen> {
+pub fn xrandr_read() -> Vec<Vec<WScreen>> {
     let mut screens: Vec<WScreen> = Vec::new();
-
-    let mut remove_that_juste_to_place_screens = 5;
 
     let xrandr = Command::new("sh")
         .arg("-c")
@@ -36,13 +33,13 @@ pub fn xrandr_read() -> Vec<WScreen> {
                 screens.push(WScreen::new(
                     screens.len(),
                     name.to_string(),
-                    Point::new(3, remove_that_juste_to_place_screens),
                     screens.is_empty(),
                 ));
-                remove_that_juste_to_place_screens += 20;
             }
         }
     }
-    screens
+
+    // FIX: UP THAT WITH THE VERTICAL POSITIONS
+    vec![screens]
 }
 // }

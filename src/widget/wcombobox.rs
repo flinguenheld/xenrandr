@@ -39,7 +39,7 @@ impl WComboBox {
         }
     }
 
-    pub fn draw(&self, frame: Frame, is_owner_focused: bool) -> Frame {
+    pub fn draw(&self, frame: Frame, is_owner_focused: bool, point: Point) -> Frame {
         let mut txt = format!(
             "❱ {} ",
             self.values
@@ -59,6 +59,6 @@ impl WComboBox {
 
         frame
             .set_current_colors(fore, back)
-            .print_text(txt.as_str(), self.point)
+            .print_text(txt.as_str(), self.point.up(point.row, point.col))
     }
 }

@@ -17,6 +17,7 @@ pub struct Point {
 }
 
 impl Point {
+    // TODO: Add operators ?
     pub fn new(row: usize, col: usize) -> Point {
         Self { row, col }
     }

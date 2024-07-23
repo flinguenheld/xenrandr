@@ -1,4 +1,4 @@
-use super::{wcombobox::WComboBox, Focus};
+use super::{wcombobox::WComboBox, Focus, WSCREEN_HEIGHT, WSCREEN_WIDTH};
 use crate::render::frame::{Frame, Point};
 use crossterm::style;
 
@@ -7,7 +7,6 @@ pub struct WScreen {
     pub number: usize,
     pub name: String,
 
-    point: Point,
     pub focused: bool,
     pub combos: Vec<WComboBox>,
 }
@@ -22,15 +21,14 @@ impl Focus for WScreen {
 }
 
 impl WScreen {
-    pub fn new(number: usize, name: String, point: Point, focused: bool) -> WScreen {
+    pub fn new(number: usize, name: String, focused: bool) -> WScreen {
         let mut screen = Self {
             number,
             name,
-            point,
             focused,
             combos: vec![
-                WComboBox::new(point.up(4, 2)),
-                WComboBox::new(point.up(5, 2)),
+                WComboBox::new(Point::new(4, 2)),
+                WComboBox::new(Point::new(5, 2)),
             ],
         };
 
@@ -57,9 +55,9 @@ impl WScreen {
         }
     }
 
-    pub fn draw(&self, mut frame: Frame) -> Frame {
-        for c in self.combos.iter() {
-            frame = c.draw(frame, self.focused);
+    pub fn draw(&self, mut frame: Frame, point: Point) -> Frame {
+        for comb in self.combos.iter() {
+            frame = comb.draw(frame, self.focused, point);
         }
 
         if self.focused {
@@ -67,8 +65,8 @@ impl WScreen {
         } else {
             frame.set_current_colors(style::Color::White, style::Color::Black)
         }
-        .print_square(self.point, 8, 19)
-        .print_text(self.number.to_string().as_str(), self.point.up(1, 2))
-        .print_text(self.name.as_str(), self.point.up(2, 2))
+        .print_square(point, WSCREEN_HEIGHT, WSCREEN_WIDTH)
+        .print_text(self.number.to_string().as_str(), point.up(1, 2))
+        .print_text(self.name.as_str(), point.up(2, 2))
     }
 }
