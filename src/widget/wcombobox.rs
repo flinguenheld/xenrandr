@@ -54,7 +54,7 @@ impl WComboBox {
         let (fore, back) = match (is_owner_focused, self.focused) {
             (true, true) => (style::Color::Black, style::Color::Blue),
             (false, true) => (style::Color::Black, style::Color::Grey),
-            _ => (style::Color::White, style::Color::Black),
+            _ => (style::Color::White, style::Color::Reset),
         };
 
         frame

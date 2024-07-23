@@ -133,6 +133,10 @@ impl ModeWelcome {
         }
 
         let mut pt = Point::new(2, 2);
+        let heigth = 4 + (self.wscreens.len() + 1) * WSCREEN_HEIGHT;
+        let width = 4 + (self.wscreens.first().unwrap().len() + 2) * WSCREEN_WIDTH;
+        frame = frame.resize(heigth, width);
+
         for line in self.wscreens.iter() {
             for ws in line.iter() {
                 frame = ws.draw(frame, pt);

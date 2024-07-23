@@ -61,9 +61,9 @@ impl WScreen {
         }
 
         if self.focused {
-            frame.set_current_colors(style::Color::Blue, style::Color::Black)
+            frame.set_current_colors(style::Color::Blue, style::Color::Reset)
         } else {
-            frame.set_current_colors(style::Color::White, style::Color::Black)
+            frame.set_current_colors(style::Color::White, style::Color::Reset)
         }
         .print_square(point, WSCREEN_HEIGHT, WSCREEN_WIDTH)
         .print_text(self.number.to_string().as_str(), point.up(1, 2))
