@@ -4,7 +4,11 @@ use crossterm::{
     QueueableCommand,
 };
 use itertools::{EitherOrBoth::*, Itertools};
-use std::io::{self, Stdout, Write};
+use std::{
+    cmp::max,
+    io::{self, Stdout, Write},
+    mem,
+};
 
 // ----------------------
 /// Point --
@@ -47,21 +51,26 @@ pub struct FrameCase {
 pub struct Frame {
     pub current: Vec<Vec<FrameCase>>,
     previous: Vec<Vec<FrameCase>>,
+    previous_size: (usize, usize),
     current_back_color: style::Color,
     current_fore_color: style::Color,
 }
 
 impl Frame {
-    pub fn new() -> Frame {
+    pub fn new() -> Self {
         Self {
             current: Vec::new(),
             previous: Vec::new(),
+            previous_size: (0, 0),
             current_fore_color: style::Color::White,
             current_back_color: style::Color::Reset,
         }
     }
 
-    pub fn resize(mut self, rows: usize, columns: usize) -> Frame {
+    /// Clear the frame, resize it with empty FrameCases
+    /// It also keeps the previous frame size, so if the new size is smaller,
+    /// it doesn't reduce it to clean the screen.
+    pub fn resize(mut self, rows: usize, columns: usize) -> Self {
         self.current.clear();
 
         self.current = vec![
@@ -71,15 +80,16 @@ impl Frame {
                     fore_color: style::Color::White,
                     back_color: style::Color::Reset,
                 };
-                columns
+                max(columns, self.previous_size.1)
             ];
-            rows
+            max(rows, self.previous_size.0)
         ];
 
+        self.previous_size = (rows, columns);
         self
     }
 
-    pub fn render(mut self) -> Frame {
+    pub fn render(mut self) -> Self {
         let mut stdout = io::stdout();
 
         // First time, to have the same size
@@ -102,16 +112,15 @@ impl Frame {
                         match case_pair {
                             Both(case, case_prev) => {
                                 if *case != *case_prev || force {
-                                    stdout.queue(cursor::MoveTo(c as u16, r as u16)).unwrap();
-                                    stdout.queue(SetBackgroundColor(case.back_color)).unwrap();
-                                    stdout.queue(SetForegroundColor(case.fore_color)).unwrap();
-                                    stdout.queue(Print(case.value)).unwrap();
+                                    stdout = fill_case(stdout, case, c, r);
                                 }
                             }
                             Right(_) => {
                                 stdout = clear_case(stdout, c, r);
                             }
-                            _ => {}
+                            Left(case) => {
+                                stdout = fill_case(stdout, case, c, r);
+                            }
                         }
                     }
                 }
@@ -120,22 +129,27 @@ impl Frame {
                         stdout = clear_case(stdout, c, r);
                     }
                 }
-                _ => {}
+                Left(row) => {
+                    for (c, case) in row.iter().enumerate() {
+                        stdout = fill_case(stdout, case, c, r);
+                    }
+                }
             }
         }
-
         stdout.flush().unwrap();
-        self.previous = self.current;
-        Frame::new()
+
+        mem::swap(&mut self.current, &mut self.previous);
+        self.current.clear();
+        self
     }
 
-    pub fn set_current_colors(mut self, fore: style::Color, back: style::Color) -> Frame {
+    pub fn set_current_colors(mut self, fore: style::Color, back: style::Color) -> Self {
         self.current_fore_color = fore;
         self.current_back_color = back;
         self
     }
 
-    pub fn print_text(mut self, text: &str, point: Point) -> Frame {
+    pub fn print_text(mut self, text: &str, point: Point) -> Self {
         if let Some(row) = self.current.get_mut(point.row) {
             for (i, c) in text.chars().enumerate() {
                 if let Some(case) = row.get_mut(point.col + i) {
@@ -148,21 +162,20 @@ impl Frame {
         self
     }
 
-    pub fn print_square(mut self, point: Point, heigth: usize, width: usize) -> Frame {
+    pub fn print_rectangle(mut self, point: Point, length: usize, width: usize) -> Self {
         self = self
-            .print_text("─".repeat(width).as_str(), point)
-            .print_text("─".repeat(width).as_str(), point.up(heigth, 0))
+            .print_text("─".repeat(length).as_str(), point)
+            .print_text("─".repeat(length).as_str(), point.up(width, 0))
             .print_text("┌", point)
-            .print_text("┐", point.up(0, width))
-            .print_text("┘", point.up(heigth, width))
-            .print_text("└", point.up(heigth, 0));
+            .print_text("┐", point.up(0, length))
+            .print_text("┘", point.up(width, length))
+            .print_text("└", point.up(width, 0));
 
-        for i in 1..heigth {
+        for i in 1..width {
             self = self
                 .print_text("│", Point::new(point.row + i, point.col))
-                .print_text("│", Point::new(point.row + i, point.col + width))
+                .print_text("│", Point::new(point.row + i, point.col + length))
         }
-
         self
     }
 }
@@ -173,5 +186,13 @@ fn clear_case(mut stdout: Stdout, c: usize, r: usize) -> Stdout {
         .queue(SetBackgroundColor(style::Color::Reset))
         .unwrap();
     stdout.queue(Print(' ')).unwrap();
+    stdout
+}
+
+fn fill_case(mut stdout: Stdout, case: &FrameCase, c: usize, r: usize) -> Stdout {
+    stdout.queue(cursor::MoveTo(c as u16, r as u16)).unwrap();
+    stdout.queue(SetBackgroundColor(case.back_color)).unwrap();
+    stdout.queue(SetForegroundColor(case.fore_color)).unwrap();
+    stdout.queue(Print(case.value)).unwrap();
     stdout
 }

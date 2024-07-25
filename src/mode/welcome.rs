@@ -1,13 +1,14 @@
 use super::Mode;
 use crate::bash::xrandr_read;
-use crate::render::frame::{Frame, Point};
-use crate::widget::{focus_next, focus_previous, Focus, WScreen, WSCREEN_HEIGHT, WSCREEN_WIDTH};
+use crate::render::frame::Frame;
+use crate::widget::{focus_next, focus_previous, WScreen};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use std::cmp::max;
 use std::{io, time::Duration};
 
 #[derive(Debug, Default)]
 pub struct ModeWelcome {
-    wscreens: Vec<Vec<WScreen>>,
+    wscreens: Vec<WScreen>,
 }
 
 impl ModeWelcome {
@@ -30,73 +31,36 @@ impl ModeWelcome {
 
                     KeyEvent { code: KeyCode::Tab, .. } |
                     KeyEvent { code: KeyCode::Char('n'), modifiers: KeyModifiers::CONTROL, .. } => {
-                        if let Some((row, col)) = self.get_focused_position()  {
-                            self.wscreens[row][col].set_focus(false);
-                            if let Some(next) = self.wscreens[row].get_mut(col + 1) {
-                                next.set_focus(true);
-                            } else if let Some(next_row) = self.wscreens.get_mut(row + 1) {
-                                next_row.first_mut().unwrap().set_focus(true);
-                            } else {
-                                self.wscreens[0][0].set_focus(true);
-                            }
-                        }
+                        focus_next(&mut self.wscreens);
                     }
 
                     KeyEvent { code: KeyCode::BackTab, .. } |
                     KeyEvent { code: KeyCode::Char('p'), modifiers: KeyModifiers::CONTROL, .. } => {
-                        if let Some((row, col)) = self.get_focused_position()  {
-                            self.wscreens[row][col].set_focus(false);
-                            if col > 0 {
-                                self.wscreens[row][col - 1].set_focus(true);
-                            } else if row > 0 {
-                                self.wscreens[row-1].last_mut().unwrap().set_focus(true);
-                            } else {
-                                self.wscreens.last_mut().unwrap().last_mut().unwrap().set_focus(true);
-                            }
-                        }
+                        focus_previous(&mut self.wscreens);
                     }
 
                     KeyEvent { code: KeyCode::Right, modifiers: KeyModifiers::CONTROL, .. } => {
-                        if let Some((row, col)) = self.get_focused_position(){
-                            if col < self.wscreens[row].len() - 1 {
-                                let ws = self.wscreens[row].remove(col);
-                                self.wscreens[row].insert(col + 1, ws)
-                            }
+                        if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
+                            current_wscreen.point.col += 1;
                         }
                     }
-
                     KeyEvent { code: KeyCode::Left, modifiers: KeyModifiers::CONTROL, .. } => {
-                        if let Some((row, col)) = self.get_focused_position(){
-                            if col > 0 {
-                                let ws = self.wscreens[row].remove(col);
-                                self.wscreens[row].insert(col - 1, ws)
+                        if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
+                            if current_wscreen.point.col > 0 {
+                                current_wscreen.point.col -= 1;
                             }
                         }
                     }
-
                     KeyEvent { code: KeyCode::Up, modifiers: KeyModifiers::CONTROL, .. } => {
-                        if let Some((row, col)) = self.get_focused_position() {
-                            let ws = self.wscreens[row].remove(col);
-                            if row == 0 {
-                                self.wscreens.insert(0, vec![ws]);
-                            } else {
-                                let col = if col > self.wscreens[row-1].len() { self.wscreens[row-1].len() } else { col };
-                                self.wscreens[row - 1].insert(col, ws);
+                        if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
+                            if current_wscreen.point.row > 0 {
+                                current_wscreen.point.row -= 1;
                             }
-                            self.wscreens.retain(|line| !line.is_empty());
                         }
                     }
-
                     KeyEvent { code: KeyCode::Down, modifiers: KeyModifiers::CONTROL, .. } => {
-                        if let Some((row, col)) = self.get_focused_position() {
-                            let ws = self.wscreens[row].remove(col);
-                            if row == self.wscreens.len() - 1 {
-                                self.wscreens.push(vec![ws]);
-                            } else {
-                                let col = if col > self.wscreens[row+1].len() { self.wscreens[row+1].len() } else { col };
-                                self.wscreens[row + 1].insert(col, ws);
-                            }
-                            self.wscreens.retain(|line| !line.is_empty());
+                        if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
+                            current_wscreen.point.row += 1;
                         }
                     }
 
@@ -105,26 +69,26 @@ impl ModeWelcome {
                     }
 
                     KeyEvent { code: KeyCode::Up, .. } => {
-                        if let Some(current_wscreen) = self.wscreens.iter_mut().flatten().find(|ws| ws.focused) {
+                        if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
                             focus_next(&mut current_wscreen.combos);
                         }
                     }
 
                     KeyEvent { code: KeyCode::Down, .. } => {
-                        if let Some(current_wscreen) = self.wscreens.iter_mut().flatten().find(|ws| ws.focused) {
+                        if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
                             focus_previous(&mut current_wscreen.combos);
                         }
                     }
 
                     KeyEvent { code: KeyCode::Right, .. } => {
-                        if let Some(current_wscreer) = self.wscreens.iter_mut().flatten().find(|ws| ws.focused) {
-                            current_wscreer.next();
+                        if let Some(current_wscreer) = self.wscreens.iter_mut().find(|ws| ws.focused) {
+                            current_wscreer.next_inside_focus();
                         }
                     }
 
                     KeyEvent { code: KeyCode::Left, .. } => {
-                        if let Some(current_wscreer) = self.wscreens.iter_mut().flatten().find(|ws| ws.focused) {
-                            current_wscreer.previous();
+                        if let Some(current_wscreer) = self.wscreens.iter_mut().find(|ws| ws.focused) {
+                            current_wscreer.previous_inside_focus();
                         }
                     }
                     _ => {}
@@ -132,32 +96,20 @@ impl ModeWelcome {
             }
         }
 
-        let mut pt = Point::new(2, 2);
-        let heigth = 4 + (self.wscreens.len() + 1) * WSCREEN_HEIGHT;
-        let width = 4 + (self.wscreens.first().unwrap().len() + 2) * WSCREEN_WIDTH;
-        frame = frame.resize(heigth, width);
+        
+        // Take the furthest wscreen to resize the terminal.
+        let  (mut max_row, mut max_col) = (0, 0);
+        for ws in self.wscreens.iter() {
+            let (r, c) = ws.space_reclaimed();
+            max_row = max(max_row, r);
+            max_col = max(max_col, c);
+        }
+        frame = frame.resize(max_row + 1, max_col + 1);
 
-        for line in self.wscreens.iter() {
-            for ws in line.iter() {
-                frame = ws.draw(frame, pt);
-                pt = pt.up(0, WSCREEN_WIDTH + 2);
-            }
-            pt = pt.up(WSCREEN_HEIGHT + 1, 0);
-            pt.col = 2;
+        for ws in self.wscreens.iter() {
+            frame = ws.draw(frame);
         }
 
         Ok((frame, Mode::Welcome))
-    }
-
-    /// Get Some(row, col)
-    fn get_focused_position(&self) -> Option<(usize, usize)> {
-        for (r, row) in self.wscreens.iter().enumerate() {
-            for (c, ws) in row.iter().enumerate() {
-                if ws.is_focus() {
-                    return Some((r, c));
-                }
-            }
-        }
-        None
     }
 }

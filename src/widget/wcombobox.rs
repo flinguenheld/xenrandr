@@ -28,6 +28,22 @@ impl WComboBox {
         }
     }
 
+    pub fn current_value(&self) -> String {
+        self.values
+            .get(self.current_displayed)
+            .unwrap_or(&String::new())
+            .clone()
+    }
+    pub fn current_value_to_usize(&self) -> Vec<usize> {
+        let mut numbers: Vec<usize> = Vec::new();
+        for txt in self.current_value().split(|c: char| !c.is_numeric()) {
+            if let Ok(num) = txt.parse::<usize>() {
+                numbers.push(num);
+            }
+        }
+        numbers
+    }
+
     pub fn next(&mut self) {
         self.current_displayed += 1;
         self.current_displayed %= self.values.len();

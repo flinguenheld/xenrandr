@@ -1,7 +1,7 @@
-use crate::widget::WScreen;
+use crate::{render::frame::Point, widget::WScreen};
 use std::process::Command;
 
-pub fn xrandr_read() -> Vec<Vec<WScreen>> {
+pub fn xrandr_read() -> Vec<WScreen> {
     let mut screens: Vec<WScreen> = Vec::new();
 
     let xrandr = Command::new("sh")
@@ -9,6 +9,8 @@ pub fn xrandr_read() -> Vec<Vec<WScreen>> {
         .args(["xrandr"])
         .output()
         .expect("xrandr command failed.");
+
+    let mut point = Point::new(2, 2);
 
     for line in xrandr
         .stdout
@@ -34,12 +36,15 @@ pub fn xrandr_read() -> Vec<Vec<WScreen>> {
                     screens.len(),
                     name.to_string(),
                     screens.is_empty(),
+                    point,
                 ));
+
+                point = point.up(0, 30);
             }
         }
     }
 
-    // FIX: UP THAT WITH THE VERTICAL POSITIONS
-    vec![screens]
+    // FIX: WRITE THAT FOR HYPRLAND AND GET THE CURRENT POSITIONS
+    screens
 }
 // }

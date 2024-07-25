@@ -28,7 +28,7 @@ fn main() -> io::Result<()> {
         }
 
         frame = frame.render();
-        sleep(Duration::from_millis(50));
+        sleep(Duration::from_millis(100));
     }
 
     stdout.execute(cursor::Show)?;
