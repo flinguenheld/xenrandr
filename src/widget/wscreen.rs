@@ -3,7 +3,7 @@ use crate::render::frame::{Frame, Point};
 use crossterm::style;
 use std::cmp::max;
 
-const SCALE: usize = 100;
+const SCALE: usize = 60;
 
 #[derive(Debug, Default, Clone)]
 pub struct WScreen {
@@ -26,29 +26,48 @@ impl Focus for WScreen {
 }
 
 impl WScreen {
-    pub fn new(number: usize, name: String, focused: bool, point: Point) -> WScreen {
+    // pub fn new(number: usize, name: String, focused: bool) -> WScreen {
+    pub fn new() -> WScreen {
         let mut screen = Self {
-            number,
-            name,
-            focused,
-            point,
+            number: 0,
+            name: String::new(),
+            focused: false,
+            point: Point::new(0, 0),
 
             combos: vec![
-                WComboBox::new(Point::new(4, 2)),
-                WComboBox::new(Point::new(5, 2)),
+                WComboBox::new(Point::new(4, 2), "Res", ""),
+                WComboBox::new(Point::new(5, 2), "Freq", "Hz"),
+                WComboBox::new(Point::new(6, 2), "Rot", "°"),
+                WComboBox::new(Point::new(7, 2), "Scale", ""),
             ],
         };
 
         // Init --
         screen.combos[0].focused = true;
-        screen.combos[1].values.append(&mut vec![
-            "0 °".to_string(),
-            "90 °".to_string(),
-            "180 °".to_string(),
-            "270 °".to_string(),
+        screen.combos[2].values.append(&mut vec![
+            "0".to_string(),
+            "90".to_string(),
+            "180".to_string(),
+            "270".to_string(),
+            "flip 0".to_string(),
+            "flip 90".to_string(),
+            "flip 180".to_string(),
+            "flip 270".to_string(),
         ]);
+        screen.combos[3].values = (0..51)
+            .skip(1)
+            .map(|v| (v as f32 / 10.0).to_string())
+            .collect::<Vec<String>>();
 
         screen
+    }
+
+    pub fn display_defaults(&mut self) {
+        self.combos.iter_mut().for_each(|c| c.display_default());
+    }
+
+    pub fn scale_point(&mut self, point: Point) {
+        self.point = point.scale(SCALE);
     }
 
     pub fn next_inside_focus(&mut self) {
@@ -64,41 +83,48 @@ impl WScreen {
 
     /// Space reclamed in the frame.
     pub fn space_reclaimed(&self) -> (usize, usize) {
-        let (length, width) = self.current_length_width(SCALE);
-        (
-            self.point.row + max(width / 2, 20), // Add some if frame is smaller than the text
-            self.point.col + max(length, 10),
-        )
-    }
-
-    pub fn draw(&self, mut frame: Frame) -> Frame {
-        let (length, width) = self.current_length_width(SCALE);
-
-        frame = if self.focused {
-            frame.set_current_colors(style::Color::Blue, style::Color::Reset)
+        if let Some((length, width)) = self.current_length_width(SCALE) {
+            (
+                self.point.row + max(width / 2, 20), // Add some if frame is smaller than the text
+                self.point.col + max(length, 20),
+            )
         } else {
-            frame.set_current_colors(style::Color::White, style::Color::Reset)
+            (0, 0)
         }
-        .print_rectangle(self.point, length, width / 2)
-        .print_text(self.number.to_string().as_str(), self.point.up(1, 2))
-        .print_text(self.name.as_str(), self.point.up(2, 2));
-
-        for comb in self.combos.iter() {
-            frame = comb.draw(frame, self.focused, self.point);
-        }
-        frame
     }
 
     /// Get the (length, width) according to the combox value and the orientation.
-    fn current_length_width(&self, scale: usize) -> (usize, usize) {
+    fn current_length_width(&self, scale: usize) -> Option<(usize, usize)> {
         let size = self.combos[0].current_value_to_usize();
-
-        if self.combos[1].current_value().contains('9')
-            || self.combos[1].current_value().contains('2')
-        {
-            (size[1] / scale, size[0] / scale)
+        if size.len() >= 2 {
+            if self.combos[2].current_value().contains('9')
+                || self.combos[2].current_value().contains('2')
+            {
+                Some((size[1] / scale, size[0] / scale))
+            } else {
+                Some((size[0] / scale, size[1] / scale))
+            }
         } else {
-            (size[0] / scale, size[1] / scale)
+            None
         }
+    }
+
+    pub fn draw(&self, mut frame: Frame) -> Frame {
+        if let Some((length, width)) = self.current_length_width(SCALE) {
+            frame = if self.focused {
+                frame.set_current_colors(style::Color::Blue, style::Color::Reset)
+            } else {
+                frame.set_current_colors(style::Color::White, style::Color::Reset)
+            }
+            .print_rectangle(self.point, length, width / 2)
+            .print_text(self.number.to_string().as_str(), self.point.up(1, 2))
+            .print_text(self.name.as_str(), self.point.up(2, 2));
+
+            for comb in self.combos.iter() {
+                frame = comb.draw(frame, self.focused, self.point);
+            }
+        }
+
+        frame
     }
 }

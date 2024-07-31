@@ -1,5 +1,5 @@
 use super::Mode;
-use crate::bash::xrandr_read;
+use crate::bash::hyprland_read;
 use crate::render::frame::Frame;
 use crate::widget::{focus_next, focus_previous, WScreen};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
@@ -14,7 +14,7 @@ pub struct ModeWelcome {
 impl ModeWelcome {
     pub fn new() -> ModeWelcome {
         ModeWelcome {
-            wscreens: xrandr_read(),
+            wscreens: hyprland_read(),
         }
     }
 
@@ -65,18 +65,18 @@ impl ModeWelcome {
                     }
 
                     KeyEvent { code: KeyCode::F(5), .. } => {
-                        self.wscreens = xrandr_read();
+                        self.wscreens = hyprland_read();
                     }
 
                     KeyEvent { code: KeyCode::Up, .. } => {
                         if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
-                            focus_next(&mut current_wscreen.combos);
+                            focus_previous(&mut current_wscreen.combos);
                         }
                     }
 
                     KeyEvent { code: KeyCode::Down, .. } => {
                         if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
-                            focus_previous(&mut current_wscreen.combos);
+                            focus_next(&mut current_wscreen.combos);
                         }
                     }
 
@@ -96,9 +96,8 @@ impl ModeWelcome {
             }
         }
 
-        
         // Take the furthest wscreen to resize the terminal.
-        let  (mut max_row, mut max_col) = (0, 0);
+        let (mut max_row, mut max_col) = (0, 0);
         for ws in self.wscreens.iter() {
             let (r, c) = ws.space_reclaimed();
             max_row = max(max_row, r);

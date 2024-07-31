@@ -4,11 +4,13 @@ use crossterm::style;
 
 #[derive(Debug, Default, Clone)]
 pub struct WComboBox {
-    point: Point,
-    pub values: Vec<String>,
     pub current_displayed: usize,
-    pub current_to_mark: usize,
+    pub default: String, // Value to display with a star
     pub focused: bool,
+    point: Point,
+    prefix: String,
+    suffix: String,
+    pub values: Vec<String>,
 }
 
 impl Focus for WComboBox {
@@ -21,11 +23,21 @@ impl Focus for WComboBox {
 }
 
 impl WComboBox {
-    pub fn new(point: Point) -> WComboBox {
+    pub fn new(point: Point, prefix: &str, suffix: &str) -> WComboBox {
         Self {
+            prefix: prefix.to_string(),
+            suffix: suffix.to_string(),
             point,
             ..Default::default()
         }
+    }
+
+    pub fn display_default(&mut self) {
+        self.current_displayed = self
+            .values
+            .iter()
+            .position(|v| *v == self.default)
+            .unwrap_or(0);
     }
 
     pub fn current_value(&self) -> String {
@@ -56,15 +68,16 @@ impl WComboBox {
     }
 
     pub fn draw(&self, frame: Frame, is_owner_focused: bool, point: Point) -> Frame {
-        let mut txt = format!(
-            "❱ {} ",
-            self.values
-                .get(self.current_displayed)
-                .cloned()
-                .unwrap_or("fail".to_string())
-        );
-        if self.current_displayed == self.current_to_mark {
-            txt.push_str("* ")
+        let val = self
+            .values
+            .get(self.current_displayed)
+            .cloned()
+            .unwrap_or("fail".to_string());
+
+        let mut txt = format!("{} ❱ {} {}", self.prefix, val, self.suffix);
+        // dbg!(&self.default);
+        if val == self.default {
+            txt.push_str(" *")
         }
 
         let (fore, back) = match (is_owner_focused, self.focused) {

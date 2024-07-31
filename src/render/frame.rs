@@ -24,6 +24,16 @@ impl Point {
         Self { row, col }
     }
 
+    pub fn scale(self, val: usize) -> Point {
+        if val > 0 {
+            Point {
+                row: self.row / val,
+                col: self.col / val,
+            }
+        } else {
+            self
+        }
+    }
     pub fn up(self, row: usize, col: usize) -> Point {
         Point {
             row: self.row + row,

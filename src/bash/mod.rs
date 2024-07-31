@@ -1,3 +1,4 @@
 mod command;
 
-pub use command::xrandr_read;
+pub use command::hyprland_read;
+// pub use command::xrandr_read;
