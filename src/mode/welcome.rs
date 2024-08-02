@@ -29,6 +29,20 @@ impl ModeWelcome {
                         return Ok((frame, Mode::Quit));
                     }
 
+                    KeyEvent { code: KeyCode::Enter, .. } => {
+
+                        // Display message
+
+                        // Launch tempo
+
+                        // Find / create file
+
+                        // Replace lines
+
+                        return Ok((frame, Mode::Confirm));
+                        
+                    }
+
                     KeyEvent { code: KeyCode::Tab, .. } |
                     KeyEvent { code: KeyCode::Char('n'), modifiers: KeyModifiers::CONTROL, .. } => {
                         focus_next(&mut self.wscreens);

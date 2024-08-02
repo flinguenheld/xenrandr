@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use xenrandr::mode::{welcome::ModeWelcome, Mode};
+use xenrandr::mode::{confirm::ModeConfirm, welcome::ModeWelcome, Mode};
 use xenrandr::render::frame::Frame;
 
 fn main() -> io::Result<()> {
@@ -19,10 +19,12 @@ fn main() -> io::Result<()> {
     // --
     let mut mode = Mode::Welcome;
     let mut mode_welcome = ModeWelcome::new();
+    let mut mode_confirm = ModeConfirm::new();
     let mut frame = Frame::new();
 
     loop {
         match mode {
+            Mode::Confirm => (frame, mode) = mode_confirm.mode_loop(frame)?,
             Mode::Welcome => (frame, mode) = mode_welcome.mode_loop(frame)?,
             _ => break,
         }
