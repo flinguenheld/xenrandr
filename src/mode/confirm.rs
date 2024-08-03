@@ -5,11 +5,12 @@ use crossterm::{
 
 use crate::render::frame::{Frame, Point};
 use std::{
-    io,
+    env, io,
+    path::Path,
     time::{Duration, SystemTime},
 };
 
-use super::Mode;
+use super::{Mode, HYPR_BAK, HYPR_CONF};
 
 pub struct ModeConfirm {
     active: bool,
@@ -37,9 +38,11 @@ impl ModeConfirm {
             if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
                     KeyCode::Esc {} => {
+                        cancel();
                         return Ok((frame, Mode::Welcome));
                     }
                     KeyCode::Enter {} => {
+                        // TODO: delete bak ?
                         return Ok((frame, Mode::Welcome));
                     }
                     _ => {}
@@ -59,9 +62,17 @@ impl ModeConfirm {
                 .print_text(time_left.as_str(), Point::new(4, 20))
                 .print_text("--", Point::new(4, 22));
         } else {
+            cancel();
             return Ok((frame, Mode::Quit));
         }
 
         Ok((frame, Mode::Confirm))
     }
+}
+
+fn cancel() {
+    let path = Path::new(&env::var_os("HOME").unwrap()).join(HYPR_CONF);
+    let path_bak = Path::new(&env::var_os("HOME").unwrap()).join(HYPR_BAK);
+
+    std::fs::copy(path_bak, path).ok();
 }

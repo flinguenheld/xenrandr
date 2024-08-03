@@ -1,9 +1,11 @@
-use super::Mode;
+use super::{Mode, HYPR_BAK, HYPR_CONF};
 use crate::bash::hyprland_read;
 use crate::render::frame::Frame;
 use crate::widget::{focus_next, focus_previous, WScreen};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use std::cmp::max;
+use std::{env, fs};
+use std::path::Path;
 use std::{io, time::Duration};
 
 #[derive(Debug, Default)]
@@ -31,16 +33,48 @@ impl ModeWelcome {
 
                     KeyEvent { code: KeyCode::Enter, .. } => {
 
-                        // Display message
+                       let path = Path::new(&env::var_os("HOME").unwrap()).join(HYPR_CONF);
+                       let path_bak = Path::new(&env::var_os("HOME").unwrap()).join(HYPR_BAK);
 
-                        // Launch tempo
+                       // Save current conf
+                       if std::fs::copy(&path, &path_bak).is_ok() {
 
-                        // Find / create file
+                            // Replace lines
+                            let mut txt = String::new();
+                            for screen in self.wscreens.iter() {
 
-                        // Replace lines
+                                // WScreen analysis
+                            }
+                            txt = "monitor=,preferred,auto,1\n".to_string();
+
+
+                            if std::fs::copy(&path, &path_bak).is_ok() {
+                                if let Ok(file) = fs::read_to_string(&path) {
+                                    let mut new_file = String::new();
+                                    let mut done = false;
+
+                                    for line in file.lines() {
+                                        if !line.starts_with("monitor=") {
+                                            new_file.push_str(line);
+                                            new_file.push('\n');
+                                        } else if !done {
+                                            new_file.push_str(txt.as_str());
+                                            done = true;
+                                        }
+                                    }
+
+                                    // TODO: Manage error ?
+                                    fs::write(path, new_file).expect("Erreur ma gueule");
+                                    return Ok((frame, Mode::Confirm));
+                                }
+                            }
+                           
+                       }else{
+                           // Display message ?
+                           // TODO: Create a mode with error ?
+                       }
 
                         return Ok((frame, Mode::Confirm));
-                        
                     }
 
                     KeyEvent { code: KeyCode::Tab, .. } |
