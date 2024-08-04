@@ -22,6 +22,12 @@ impl ModeWelcome {
 
     #[rustfmt::skip]
     pub fn mode_loop(&mut self, mut frame: Frame) -> io::Result<(Frame, Mode)> {
+
+        if self.wscreens.is_empty() {
+            return Ok((frame, Mode::Message("No screen found\nthe 'hyprctl monitors'\
+                                             command\nhas failed".to_string())));
+        }
+        
         while event::poll(Duration::default())? {
             if let Event::Key(key_event) = event::read()? {
 

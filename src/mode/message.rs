@@ -37,7 +37,7 @@ impl ModeMessage {
                     45,
                     text.chars().filter(|c| *c == '\n').count() + 4,
                 )
-                .set_current_colors(style::Color::Grey, style::Color::Reset);
+                .set_current_colors(style::Color::Yellow, style::Color::Reset);
 
             for (i, line) in text.split('\n').enumerate() {
                 frame = frame.print_text(format!("{:^40}", line).as_str(), Point::new(i + 3, 5));
