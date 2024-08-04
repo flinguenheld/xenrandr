@@ -39,6 +39,7 @@ impl WScreen {
                 WComboBox::new(Point::new(5, 2), "Freq", "Hz"),
                 WComboBox::new(Point::new(6, 2), "Rot", "°"),
                 WComboBox::new(Point::new(7, 2), "Scale", ""),
+                WComboBox::new(Point::new(8, 2), "Disabled", ""),
             ],
         };
 
@@ -58,6 +59,9 @@ impl WScreen {
             .skip(1)
             .map(|v| (v as f32 / 10.0).to_string())
             .collect::<Vec<String>>();
+        screen.combos[4]
+            .values
+            .append(&mut vec!["true".to_string(), "false".to_string()]);
 
         screen
     }

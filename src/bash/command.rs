@@ -6,7 +6,7 @@ pub fn hyprland_read() -> Vec<WScreen> {
 
     let cmd = Command::new("sh")
         .arg("-c")
-        .args(["hyprctl monitors all | grep -E 'ID| at |scale|transform|Modes:'"])
+        .args(["hyprctl monitors all | grep -E 'ID| at |scale|transform|disabled|Modes:'"])
         .output()
         .expect("hyprctl command failed.");
 
@@ -38,7 +38,7 @@ pub fn hyprland_read() -> Vec<WScreen> {
         if let Some(last) = screens.last_mut() {
             last.focused = true;
             match count {
-                0 | 2 | 5 | 7 | 9 | 11 => {}
+                0 | 2 | 5 | 7 | 9 | 11 | 13 => {}
                 1 => {
                     if let Some(name) = line.split_whitespace().next() {
                         last.name = name.to_string();
@@ -93,6 +93,13 @@ pub fn hyprland_read() -> Vec<WScreen> {
                         .get(line.parse::<usize>().unwrap_or(0))
                         .unwrap_or(&"".to_string())
                         .to_string();
+                }
+
+                12 => {
+                    last.combos[4].default = match line {
+                        "true" => "true".to_string(),
+                        _ => "false".to_string(),
+                    }
                 }
 
                 _ => {
