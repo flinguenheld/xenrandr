@@ -43,38 +43,51 @@ impl ModeWelcome {
                             let mut txt = String::new();
                             for screen in self.wscreens.iter() {
 
-                                // WScreen analysis
+                                // Name
+
+                                // Resolution
+
+                                // Frequency
+
+                                // Position
+
+                                // Scale
+
+                                // Transform
+
                             }
                             txt = "monitor=,preferred,auto,1\n".to_string();
 
+                            if let Ok(file) = fs::read_to_string(&path) {
+                                let mut new_file = String::new();
+                                let mut done = false;
 
-                            if std::fs::copy(&path, &path_bak).is_ok() {
-                                if let Ok(file) = fs::read_to_string(&path) {
-                                    let mut new_file = String::new();
-                                    let mut done = false;
-
-                                    for line in file.lines() {
-                                        if !line.starts_with("monitor=") {
-                                            new_file.push_str(line);
-                                            new_file.push('\n');
-                                        } else if !done {
-                                            new_file.push_str(txt.as_str());
-                                            done = true;
-                                        }
+                                for line in file.lines() {
+                                    if !line.starts_with("monitor=") {
+                                        new_file.push_str(line);
+                                        new_file.push('\n');
+                                    } else if !done {
+                                        new_file.push_str(txt.as_str());
+                                        done = true;
                                     }
-
-                                    // TODO: Manage error ?
-                                    fs::write(path, new_file).expect("Erreur ma gueule");
-                                    return Ok((frame, Mode::Confirm));
                                 }
+
+                                if fs::write(path, new_file).is_ok() {
+                                    return Ok((frame, Mode::Confirm));
+
+                                } else {
+                                    return Ok((frame, Mode::Message("The attempt to write the \n~/.config/\
+                                                      hypr/.hyprland.bak file\nhas failed.".to_string())));
+                                }
+                            } else {
+                                return Ok((frame, Mode::Message("Impossible to read the \n~/.config/\
+                                                  hypr/.hyprland.bak file.".to_string())));
                             }
                            
-                       }else{
-                           // Display message ?
-                           // TODO: Create a mode with error ?
+                       } else {
+                            return Ok((frame, Mode::Message("The attempt to copy the \n~/.config/\
+                                              hypr/hyprland.conf file\nhas failed.".to_string())));
                        }
-
-                        return Ok((frame, Mode::Confirm));
                     }
 
                     KeyEvent { code: KeyCode::Tab, .. } |
