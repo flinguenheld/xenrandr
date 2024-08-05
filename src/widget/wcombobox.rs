@@ -75,14 +75,13 @@ impl WComboBox {
             .unwrap_or("fail".to_string());
 
         let mut txt = format!("{} ❱ {} {}", self.prefix, val, self.suffix);
-        // dbg!(&self.default);
         if val == self.default {
             txt.push_str(" *")
         }
 
         let (fore, back) = match (is_owner_focused, self.focused) {
-            (true, true) => (style::Color::Black, style::Color::Blue),
-            (false, true) => (style::Color::Black, style::Color::Grey),
+            (true, true) => (style::Color::Black, style::Color::Cyan),
+            (false, _) => (style::Color::Black, style::Color::Grey),
             _ => (style::Color::White, style::Color::Reset),
         };
 

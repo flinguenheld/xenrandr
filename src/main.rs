@@ -17,7 +17,7 @@ fn main() -> io::Result<()> {
     stdout.execute(cursor::Hide)?;
 
     // --
-    let mut mode = Mode::Welcome;
+    let mut mode = Mode::Welcome(true);
     let mut mode_welcome = ModeWelcome::new();
     let mut mode_confirm = ModeConfirm::new();
     let mut mode_message = ModeMessage::new();
@@ -25,11 +25,13 @@ fn main() -> io::Result<()> {
 
     loop {
         match mode {
-            Mode::Confirm => (frame, mode) = mode_confirm.mode_loop(frame)?,
+            Mode::Confirm(restart) => {
+                (frame, mode) = mode_confirm.mode_loop(Mode::Confirm(restart), frame)?
+            }
             Mode::Message(txt) => {
                 (frame, mode) = mode_message.mode_loop(Mode::Message(txt), frame)?
             }
-            Mode::Welcome => (frame, mode) = mode_welcome.mode_loop(frame)?,
+            Mode::Welcome(reload) => (frame, mode) = mode_welcome.mode_loop(frame, reload)?,
             _ => break,
         }
 

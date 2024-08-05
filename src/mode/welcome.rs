@@ -1,12 +1,9 @@
 use super::{Mode, HYPR_BAK, HYPR_CONF};
 use crate::bash::hyprland_read;
 use crate::render::frame::Frame;
-use crate::widget::{focus_next, focus_previous, WScreen};
+use crate::widget::{focus_next, focus_previous, Focus, WScreen, DISPLAY_SCALE};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
-use std::cmp::max;
-use std::{env, fs};
-use std::path::Path;
-use std::{io, time::Duration};
+use std::{cmp::max, env, fs, io, path::Path, time::Duration};
 
 #[derive(Debug, Default)]
 pub struct ModeWelcome {
@@ -16,15 +13,19 @@ pub struct ModeWelcome {
 impl ModeWelcome {
     pub fn new() -> ModeWelcome {
         ModeWelcome {
-            wscreens: hyprland_read(),
+            wscreens: Vec::new(),
         }
     }
 
     #[rustfmt::skip]
-    pub fn mode_loop(&mut self, mut frame: Frame) -> io::Result<(Frame, Mode)> {
+    pub fn mode_loop(&mut self, mut frame: Frame, reload : bool) -> io::Result<(Frame, Mode)> {
+
+        if reload {
+            self.wscreens= hyprland_read();
+        }
 
         if self.wscreens.is_empty() {
-            return Ok((frame, Mode::Message("No screen found\nthe 'hyprctl monitors'\
+            return Ok((frame, Mode::Message("No screen found.\nThe 'hyprctl monitors'\
                                              command\nhas failed".to_string())));
         }
         
@@ -43,26 +44,33 @@ impl ModeWelcome {
                        let path_bak = Path::new(&env::var_os("HOME").unwrap()).join(HYPR_BAK);
 
                        // Save current conf
-                       if std::fs::copy(&path, &path_bak).is_ok() {
+                       if std::fs::copy(&path, path_bak).is_ok() {
 
                             // Replace lines
                             let mut txt = String::new();
                             for screen in self.wscreens.iter() {
 
-                                // Name
+                                if screen.combos[4].current_value() == "true"
+                                {
+                                    // TODO: Error if it's the current screen or remove the option !
+                                    txt= format!("{}monitor={},disable",txt, screen.name);
 
-                                // Resolution
+                                } else {
 
-                                // Frequency
-
-                                // Position
-
-                                // Scale
-
-                                // Transform
-
+                                    txt= format!("{}monitor={},{}@{},{}x{},{},transform,{}\n",
+                                                    txt,
+                                                    screen.name,
+                                                    screen.combos[0].current_value(),    // resolution
+                                                    screen.combos[1].current_value(),    // frequency
+                                                    screen.point.col,                    // position
+                                                    screen.point.row,
+                                                    screen.combos[3].current_value(),    // scale
+                                                    screen.combos[2].current_displayed); // rotation
+                                    }
                             }
-                            txt = "monitor=,preferred,auto,1\n".to_string();
+                            // return Ok((frame, Mode::Message(txt)));
+
+                            // txt = "monitor=,preferred,auto,1\n".to_string();
 
                             if let Ok(file) = fs::read_to_string(&path) {
                                 let mut new_file = String::new();
@@ -79,7 +87,7 @@ impl ModeWelcome {
                                 }
 
                                 if fs::write(path, new_file).is_ok() {
-                                    return Ok((frame, Mode::Confirm));
+                                    return Ok((frame, Mode::Confirm(true)));
 
                                 } else {
                                     return Ok((frame, Mode::Message("The attempt to write the \n~/.config/\
@@ -106,33 +114,34 @@ impl ModeWelcome {
                         focus_previous(&mut self.wscreens);
                     }
 
+                    // TODO: USE SCALE !!!!!
                     KeyEvent { code: KeyCode::Right, modifiers: KeyModifiers::CONTROL, .. } => {
                         if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
-                            current_wscreen.point.col += 1;
+                            current_wscreen.point.col += DISPLAY_SCALE;
                         }
                     }
                     KeyEvent { code: KeyCode::Left, modifiers: KeyModifiers::CONTROL, .. } => {
                         if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
                             if current_wscreen.point.col > 0 {
-                                current_wscreen.point.col -= 1;
+                                current_wscreen.point.col -= DISPLAY_SCALE;
                             }
                         }
                     }
                     KeyEvent { code: KeyCode::Up, modifiers: KeyModifiers::CONTROL, .. } => {
                         if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
                             if current_wscreen.point.row > 0 {
-                                current_wscreen.point.row -= 1;
+                                current_wscreen.point.row -= DISPLAY_SCALE;
                             }
                         }
                     }
                     KeyEvent { code: KeyCode::Down, modifiers: KeyModifiers::CONTROL, .. } => {
                         if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
-                            current_wscreen.point.row += 1;
+                            current_wscreen.point.row += DISPLAY_SCALE;
                         }
                     }
 
                     KeyEvent { code: KeyCode::F(5), .. } => {
-                        self.wscreens = hyprland_read();
+                        return Ok((frame, Mode::Welcome(true)))
                     }
 
                     KeyEvent { code: KeyCode::Up, .. } => {
@@ -148,14 +157,14 @@ impl ModeWelcome {
                     }
 
                     KeyEvent { code: KeyCode::Right, .. } => {
-                        if let Some(current_wscreer) = self.wscreens.iter_mut().find(|ws| ws.focused) {
-                            current_wscreer.next_inside_focus();
+                        if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
+                            current_wscreen.next_inside_focus();
                         }
                     }
 
                     KeyEvent { code: KeyCode::Left, .. } => {
-                        if let Some(current_wscreer) = self.wscreens.iter_mut().find(|ws| ws.focused) {
-                            current_wscreer.previous_inside_focus();
+                        if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
+                            current_wscreen.previous_inside_focus();
                         }
                     }
                     _ => {}
@@ -173,9 +182,16 @@ impl ModeWelcome {
         frame = frame.resize(max_row + 1, max_col + 1);
 
         for ws in self.wscreens.iter() {
-            frame = ws.draw(frame);
+            if !ws.is_focus() {
+                frame = ws.draw(frame);
+            }
         }
 
-        Ok((frame, Mode::Welcome))
+        if let Some(current_wscreen) = self.wscreens.iter_mut().find(|ws| ws.focused) {
+            frame = current_wscreen.draw(frame);
+        }
+
+
+        Ok((frame, Mode::Welcome(false)))
     }
 }

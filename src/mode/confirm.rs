@@ -3,7 +3,10 @@ use crossterm::{
     style,
 };
 
-use crate::render::frame::{Frame, Point};
+use crate::{
+    bash::hyprland_reload_conf,
+    render::frame::{Frame, Point},
+};
 use std::{
     env, io,
     path::Path,
@@ -13,7 +16,6 @@ use std::{
 use super::{Mode, HYPR_BAK, HYPR_CONF};
 
 pub struct ModeConfirm {
-    active: bool,
     duration: Duration,
     start: SystemTime,
 }
@@ -21,17 +23,16 @@ pub struct ModeConfirm {
 impl ModeConfirm {
     pub fn new() -> ModeConfirm {
         ModeConfirm {
-            active: false,
-            duration: Duration::from_secs(7),
+            duration: Duration::from_secs(10),
             start: SystemTime::now(),
         }
     }
 
-    pub fn mode_loop(&mut self, mut frame: Frame) -> io::Result<(Frame, Mode)> {
-        // Start ?
-        if !self.active {
-            self.active = true;
-            self.start = SystemTime::now();
+    pub fn mode_loop(&mut self, mode: Mode, mut frame: Frame) -> io::Result<(Frame, Mode)> {
+        if let Mode::Confirm(restart) = mode {
+            if restart {
+                self.start = SystemTime::now();
+            }
         }
 
         while event::poll(Duration::default())? {
@@ -39,11 +40,11 @@ impl ModeConfirm {
                 match key_event.code {
                     KeyCode::Esc {} => {
                         cancel();
-                        return Ok((frame, Mode::Welcome));
+                        return Ok((frame, Mode::Welcome(false)));
                     }
                     KeyCode::Enter {} => {
                         // TODO: delete bak ?
-                        return Ok((frame, Mode::Welcome));
+                        return Ok((frame, Mode::Welcome(true)));
                     }
                     _ => {}
                 }
@@ -63,10 +64,10 @@ impl ModeConfirm {
                 .print_text("--", Point::new(4, 22));
         } else {
             cancel();
-            return Ok((frame, Mode::Quit));
+            return Ok((frame, Mode::Welcome(false)));
         }
 
-        Ok((frame, Mode::Confirm))
+        Ok((frame, Mode::Confirm(false)))
     }
 }
 
@@ -75,4 +76,5 @@ fn cancel() {
     let path_bak = Path::new(&env::var_os("HOME").unwrap()).join(HYPR_BAK);
 
     std::fs::copy(path_bak, path).ok();
+    hyprland_reload_conf();
 }

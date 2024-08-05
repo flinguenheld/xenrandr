@@ -188,6 +188,16 @@ impl Frame {
         }
         self
     }
+
+    pub fn print_filled_rectangle(mut self, point: Point, length: usize, width: usize) -> Self {
+        for i in 0..width {
+            self = self.print_text(
+                " ".repeat(length).as_str(),
+                Point::new(point.row + i, point.col),
+            )
+        }
+        self
+    }
 }
 
 fn clear_case(mut stdout: Stdout, c: usize, r: usize) -> Stdout {

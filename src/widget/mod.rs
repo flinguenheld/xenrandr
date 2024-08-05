@@ -2,8 +2,8 @@ mod wcombobox;
 mod wscreen;
 
 pub use wscreen::WScreen;
-pub const WSCREEN_HEIGHT: usize = 9;
-pub const WSCREEN_WIDTH: usize = 18;
+
+pub const DISPLAY_SCALE: usize = 80;
 
 pub trait Focus {
     fn is_focus(&self) -> bool;

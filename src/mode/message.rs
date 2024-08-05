@@ -21,7 +21,7 @@ impl ModeMessage {
                         return Ok((frame, Mode::Quit));
                     }
                     KeyCode::Enter {} => {
-                        return Ok((frame, Mode::Welcome));
+                        return Ok((frame, Mode::Welcome(false)));
                     }
                     _ => {}
                 }
